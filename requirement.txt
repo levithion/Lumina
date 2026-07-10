@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+qdrant-client
+sentence-transformers
+torch
+pillow
+requests
+streamlit
