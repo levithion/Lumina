@@ -16,16 +16,17 @@ st.markdown("---")
 @st.cache_resource
 def load_model_and_client():
     # Streamlit Cloud uses st.secrets to store sensitive variables securely
-    qdrant_url = ""
-    qdrant_api_key = ""
+    qdrant_url = os.environ.get("QDRANT_URL", "YOUR_QDRANT_URL")
+    qdrant_api_key = os.environ.get("QDRANT_API_KEY", "YOUR_QDRANT_API_KEY")
     
     try:
-        qdrant_url = st.secrets["QDRANT_URL"]
-        qdrant_api_key = st.secrets["QDRANT_API_KEY"]
-    except FileNotFoundError:
-        # Fallback to hardcoded variables if testing locally without secrets
-        qdrant_url = os.environ.get("QDRANT_URL", "YOUR_QDRANT_URL")
-        qdrant_api_key = os.environ.get("QDRANT_API_KEY", "YOUR_QDRANT_API_KEY")
+        if "QDRANT_URL" in st.secrets:
+            qdrant_url = st.secrets["QDRANT_URL"]
+        if "QDRANT_API_KEY" in st.secrets:
+            qdrant_api_key = st.secrets["QDRANT_API_KEY"]
+    except Exception:
+        # Fallback to hardcoded variables if testing locally without secrets.toml
+        pass
     
     device = "cuda" if torch.cuda.is_available() else ("mps" if torch.backends.mps.is_available() else "cpu")
     model = SentenceTransformer('clip-ViT-B-32', device=device)
