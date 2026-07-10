@@ -16,8 +16,8 @@ st.markdown("---")
 @st.cache_resource
 def load_model_and_client():
     # Streamlit Cloud uses st.secrets to store sensitive variables securely
-    qdrant_url = os.environ.get("QDRANT_URL", "YOUR_QDRANT_URL")
-    qdrant_api_key = os.environ.get("QDRANT_API_KEY", "YOUR_QDRANT_API_KEY")
+    qdrant_url = os.environ.get("QDRANT_URL", "https://1f7c7f33-b52f-4965-aa17-afb87273d512.us-east-2-0.aws.cloud.qdrant.io")
+    qdrant_api_key = os.environ.get("QDRANT_API_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIiwic3ViamVjdCI6ImFwaS1rZXk6NTgxYzBjNzUtMmY5MC00YzExLWI0NDYtNmFmY2IxMzVmNTMxIn0.jWEKq72tOwZ88F5GdiQuUZU8aDNKDNyhUPBGUZKfsX4")
     
     try:
         if "QDRANT_URL" in st.secrets:
