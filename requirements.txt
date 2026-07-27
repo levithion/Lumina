@@ -6,3 +6,7 @@ torch
 pillow
 requests
 streamlit
+pytesseract
+ImageHash
+pytest
+huggingface_hub

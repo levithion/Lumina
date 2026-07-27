@@ -1,5 +1,11 @@
-venv/
+.venv/
 __pycache__/
-*.pyc
+*.py[cod]
 .env
-.DS_Store
+.streamlit/secrets.toml
+data/live/*.jpg
+data/live/*.jpeg
+data/live/*.png
+data/live/*.gif
+data/live/*.webp
+qdrant_data/

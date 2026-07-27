@@ -3,15 +3,17 @@
 **🚀 Live Demo:** [https://lumina-search-engine.streamlit.app](https://lumina-search-engine.streamlit.app)
 
 ## Overview
-**Lumina** is a scalable, AI-powered multimodal search engine that allows users to search through a large collection of images using natural language text queries (e.g., *"a tall building at sunset"*). 
+**Lumina** is now a meme-focused search engine that finds images by caption text, meaning, reaction, and template. The original image collection remains available in `lumina_multimodal`; meme indexing uses the versioned `lumina_memes_v1` collection.
 
 Instead of relying on tagged metadata, Lumina "understands" the visual content of the images by leveraging **OpenAI's CLIP model** to map both images and text into a shared mathematical vector space. The high-dimensional vectors are stored and queried efficiently using the **Qdrant Vector Database**.
 
 ---
 
 ## Features
-- **Semantic Image Search**: Find images using natural language descriptions without needing any manual tagging.
-- **Multimodal Embedding**: Uses `clip-ViT-B-32` from SentenceTransformers to encode both text and images into the same 512-dimensional vector space.
+- **Meme Search**: Search by exact caption, paraphrased meaning, reaction, character, or template.
+- **OCR Indexing**: Extracts text printed in memes and keeps a normalized copy for matching.
+- **Hybrid Retrieval**: Combines CLIP visual similarity, semantic text similarity, and exact term overlap.
+- **Idempotent Ingestion**: Content-based IDs avoid duplicate points when ingestion is rerun.
 - **Blazing Fast Retrieval**: Powered by Qdrant Vector Database for lightning-fast cosine similarity searches.
 - **Interactive UI**: Built with Streamlit for a clean, responsive search experience.
 - **Cloud Ready**: Easily deployable on Streamlit Community Cloud with a hosted Qdrant cluster.
@@ -93,8 +95,8 @@ docker-compose up -d
 ### 3. Populate the Database
 To ingest your own images into the vector database, place them in the `data/` folder and run the ingestion scripts:
 ```bash
-python init_db.py
-python bulk_ingest.py
+python3 init_meme_db.py
+python3 ingest_memes.py data
 ```
 
 ### 4. Run the Application

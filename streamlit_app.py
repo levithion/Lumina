@@ -1,96 +1,71 @@
-import streamlit as st
+"""Standalone cloud Streamlit app; no local FastAPI process required."""
+
 import os
+
+import streamlit as st
 import torch
-from sentence_transformers import SentenceTransformer
 from qdrant_client import QdrantClient
+from sentence_transformers import SentenceTransformer
 
-# 1. Page Configuration
-st.set_page_config(page_title="Lumina Search", layout="wide", page_icon="🔍")
+from config import CLIP_MODEL_NAME, MEME_COLLECTION_NAME, QDRANT_API_KEY, QDRANT_URL, TEXT_MODEL_NAME
+from meme_pipeline import device_name
+from meme_retrieval import hybrid_search
 
-# UI Styling
-st.title("🔍 Lumina: Multimodal Search Engine")
-st.markdown("---")
+st.set_page_config(page_title="Lumina Meme Search", layout="wide", page_icon="😂")
 
-# 2. Setup caching for heavy models and clients
-# This prevents the model from reloading every time you click a button!
+
 @st.cache_resource
-def load_model_and_client():
-    # Streamlit Cloud uses st.secrets to store sensitive variables securely
-    qdrant_url = os.environ.get("QDRANT_URL", "https://1f7c7f33-b52f-4965-aa17-afb87273d512.us-east-2-0.aws.cloud.qdrant.io")
-    qdrant_api_key = os.environ.get("QDRANT_API_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIiwic3ViamVjdCI6ImFwaS1rZXk6NTgxYzBjNzUtMmY5MC00YzExLWI0NDYtNmFmY2IxMzVmNTMxIn0.jWEKq72tOwZ88F5GdiQuUZU8aDNKDNyhUPBGUZKfsX4")
-    
-    try:
-        if "QDRANT_URL" in st.secrets:
-            qdrant_url = st.secrets["QDRANT_URL"]
-        if "QDRANT_API_KEY" in st.secrets:
-            qdrant_api_key = st.secrets["QDRANT_API_KEY"]
-    except Exception:
-        # Fallback to hardcoded variables if testing locally without secrets.toml
-        pass
-    
-    device = "cuda" if torch.cuda.is_available() else ("mps" if torch.backends.mps.is_available() else "cpu")
-    model = SentenceTransformer('clip-ViT-B-32', device=device)
-    
-    if qdrant_api_key:
-        client = QdrantClient(url=qdrant_url, api_key=qdrant_api_key)
-    else:
-        client = QdrantClient(url=qdrant_url)
-        
-    return model, client
+def resources():
+    url = st.secrets.get("QDRANT_URL", QDRANT_URL)
+    key = st.secrets.get("QDRANT_API_KEY", QDRANT_API_KEY)
+    client = QdrantClient(url=url, api_key=key) if key else QdrantClient(url=url)
+    device = device_name()
+    return (
+        SentenceTransformer(CLIP_MODEL_NAME, device=device),
+        SentenceTransformer(TEXT_MODEL_NAME, device=device),
+        client,
+    )
 
-st.sidebar.header("System Status")
 
+st.title("😂 Lumina Meme Search")
+st.caption("Search current memes by caption, meaning, reaction, or subreddit.")
 try:
-    with st.spinner("Loading AI model and connecting to database..."):
-        model, client = load_model_and_client()
-    st.sidebar.success("✅ System: Online")
-    st.sidebar.info(f"Device: {model.device}")
-except Exception as e:
-    st.sidebar.error("❌ System: Error loading model or database")
-    st.sidebar.error(str(e))
+    visual_model, text_model, client = resources()
+except Exception as exc:
+    st.error(f"Cloud search is not configured: {exc}")
     st.stop()
 
-COLLECTION_NAME = "lumina_multimodal"
-top_k = st.sidebar.slider("Number of results", 1, 20, 9)
+with st.sidebar:
+    limit = st.slider("Results", 1, 50, 12)
+    template = st.text_input("Template filter")
+    safe_only = st.checkbox("Safe content only", True)
 
-# 3. Search Interface
-query = st.text_input("Describe what you're looking for...", placeholder="e.g. a tall building at sunset")
-
+query = st.text_input("What meme are you looking for?", placeholder="e.g. programming failure")
 if query:
-    with st.spinner(f"Searching for '{query}'..."):
-        try:
-            # Encode text query directly within Streamlit
-            vector = model.encode(query).tolist()
+    try:
+        results = hybrid_search(
+            client,
+            MEME_COLLECTION_NAME,
+            visual_model.encode(query, normalize_embeddings=True).tolist(),
+            text_model.encode(query, normalize_embeddings=True).tolist(),
+            query,
+            limit,
+            template or None,
+            safe_only,
+        )
+        if not results:
+            st.info("No matching memes found.")
+        else:
+            cols = st.columns(4)
+            for index, result in enumerate(results):
+                with cols[index % 4]:
+                    source = result.get("image_url") or result.get("file_path")
+                    if source:
+                        st.image(source, use_container_width=True)
+                    st.caption((result.get("ocr_text") or result.get("title") or "Meme")[:140])
+                    st.caption(f"{result.get('score', 0):.3f} · {', '.join(result.get('matched_on', []))}")
+    except Exception as exc:
+        st.error(f"Search failed: {exc}")
 
-            # Query Qdrant Cloud
-            response = client.query_points(
-                collection_name=COLLECTION_NAME,
-                query=vector,
-                limit=top_k
-            )
-            
-            if response.points:
-                st.subheader(f"Top matches for: {query}")
-                
-                # Grid layout: 3 images per row
-                cols = st.columns(3) 
-                for idx, hit in enumerate(response.points):
-                    with cols[idx % 3]:
-                        image_path = hit.payload.get("file_path", "Unknown")
-                        score = round(hit.score, 4)
-                        
-                        if os.path.exists(image_path):
-                            st.image(image_path, use_container_width=True, 
-                                     caption=f"Similarity: {score}")
-                        else:
-                            st.info(f"Match Found! Score: {score}")
-                            st.caption(f"Path: {image_path}")
-                            st.warning("🖼️ Image file not hosted in this cloud container.")
-            else:
-                st.info("No matching results found in the vector database.")
-                
-        except Exception as e:
-            st.error(f"Search failed. Error: {e}")
-
-st.markdown("---")
-st.caption("Lumina Search Engine | Built with Streamlit, Qdrant & CLIP")
+st.divider()
+st.caption("Lumina Meme Search")
