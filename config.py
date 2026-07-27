@@ -20,7 +20,13 @@ IMGUR_CLIENT_ID = os.getenv("IMGUR_CLIENT_ID", "")
 IMGUR_GALLERY_PATH = os.getenv("IMGUR_GALLERY_PATH", "3/gallery/hot/viral/0")
 IMGUR_MIN_SCORE = int(os.getenv("IMGUR_MIN_SCORE", "0"))
 IMGUR_KEYWORDS = os.getenv("IMGUR_KEYWORDS", "meme,memes,funny,reaction,relatable,dank,shitpost,joke,lol")
-MEME_API_SUBREDDITS = os.getenv("MEME_API_SUBREDDITS", "memes,dankmemes,wholesomememes,programmerhumor")
+# Include broad feeds plus topical feeds so searches such as "car" have
+# matching captions/titles in the index. Override this with the environment
+# variable when a deployment needs a different mix.
+MEME_API_SUBREDDITS = os.getenv(
+    "MEME_API_SUBREDDITS",
+    "memes,dankmemes,wholesomememes,programmerhumor,carmemes,car_memes,carscirclejerk",
+)
 HF_TOKEN = os.getenv("HF_TOKEN", "")
 HF_DATASET_REPO = os.getenv("HF_DATASET_REPO", "")
 CLIP_MODEL_NAME = os.getenv("CLIP_MODEL_NAME", "clip-ViT-B-32")
