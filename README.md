@@ -17,6 +17,7 @@ Instead of relying on tagged metadata, Lumina "understands" the visual content o
 - **Blazing Fast Retrieval**: Powered by Qdrant Vector Database for lightning-fast cosine similarity searches.
 - **Interactive UI**: Built with Streamlit for a clean, responsive search experience.
 - **Cloud Ready**: Easily deployable on Streamlit Community Cloud with a hosted Qdrant cluster.
+- **Automatic Fresh-Meme Sync**: GitHub Actions fetches new memes every 15 minutes, uploads images to Hugging Face, and indexes them in Qdrant—even when your computer is offline.
 
 ---
 
@@ -71,6 +72,27 @@ Lumina uses **CLIP**. Multimodal models like CLIP are trained on millions of ima
 ---
 
 ## Getting Started
+
+### Cloud deployment and automatic updates
+
+The production setup uses three free-tier services:
+
+1. **Streamlit Community Cloud** runs `streamlit_app.py` and connects users to Qdrant.
+2. **Qdrant Cloud** stores the named visual and semantic meme vectors.
+3. **Hugging Face Datasets** stores publicly accessible image files.
+
+The workflow in `.github/workflows/meme-sync.yml` runs every 15 minutes (and can also be started manually). Add these repository secrets in **GitHub → Settings → Secrets and variables → Actions**:
+
+```text
+QDRANT_URL
+QDRANT_API_KEY
+HF_TOKEN
+HF_DATASET_REPO=Shshank/lumina-memes
+```
+
+The sync currently uses the Reddit-backed `meme-api.com` fallback and pulls general, programming, and car-meme feeds. It is a feed, not a keyword-search API: a query can only match memes that have already been ingested. Complete arbitrary-topic coverage requires a searchable provider (for example, approved Reddit API access) or a larger continuously ingested corpus.
+
+For a manual run, open **Actions → Sync fresh memes → Run workflow**.
 
 ### Prerequisites
 - Python 3.9+
