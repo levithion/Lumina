@@ -2,6 +2,12 @@
 
 **🚀 Live Demo:** [https://lumina-search-engine.streamlit.app](https://lumina-search-engine.streamlit.app)
 
+[![Live Demo](https://img.shields.io/badge/demo-live-ff4b4b?logo=streamlit&logoColor=white)](https://lumina-search-engine.streamlit.app)
+[![Sync schedule](https://img.shields.io/badge/sync-every%2015%20minutes-2088ff?logo=githubactions&logoColor=white)](.github/workflows/meme-sync.yml)
+[![Python](https://img.shields.io/badge/python-3.9%2B-3776ab?logo=python&logoColor=white)](requirements.txt)
+[![Streamlit](https://img.shields.io/badge/UI-Streamlit-ff4b4b?logo=streamlit&logoColor=white)](https://streamlit.io/)
+[![Qdrant](https://img.shields.io/badge/vectors-Qdrant-dc244c)](https://qdrant.tech/)
+
 ## Overview
 **Lumina** is now a meme-focused search engine that finds images by caption text, meaning, reaction, and template. The original image collection remains available in `lumina_multimodal`; meme indexing uses the versioned `lumina_memes_v1` collection.
 
@@ -93,6 +99,17 @@ HF_DATASET_REPO=Shshank/lumina-memes
 The sync currently uses the Reddit-backed `meme-api.com` fallback and pulls general, programming, and car-meme feeds. It is a feed, not a keyword-search API: a query can only match memes that have already been ingested. Complete arbitrary-topic coverage requires a searchable provider (for example, approved Reddit API access) or a larger continuously ingested corpus.
 
 For a manual run, open **Actions → Sync fresh memes → Run workflow**.
+
+### Current limitations
+
+- **Feed coverage:** The default source is the Reddit-backed `meme-api.com` feed. It samples configured subreddits; it does not search all of Reddit or guarantee a result for every keyword.
+- **Search freshness:** New memes become searchable after the next successful scheduled workflow run. GitHub Actions schedules can be delayed occasionally.
+- **Source availability:** `meme-api.com` is an unofficial fallback. It may rate-limit, return duplicates, remove posts, or become temporarily unavailable. Official Reddit API access is still preferable for a production integration.
+- **Content licensing and moderation:** Meme images remain hosted by their source/Hugging Face dataset. Verify each source's terms, respect takedown requests, and do not assume commercial redistribution rights. The safe-content checkbox is a heuristic, not a guarantee.
+- **Image availability:** Deleted, private, hotlinked, or expired source images may show no image even when their vector remains indexed until cleanup.
+- **Free-tier limits:** Qdrant Cloud, Hugging Face, Streamlit Community Cloud, and GitHub Actions have quotas, sleeping/hibernation behavior, and rate limits. Large collections or high traffic may require paid resources.
+- **Model/runtime cost:** The first Streamlit startup downloads embedding models and can be slow; memory and CPU are limited on free hosting.
+- **Arbitrary-topic guarantee:** Semantic search ranks the indexed corpus; it cannot generate or fetch a matching meme for a topic that has not been ingested.
 
 ### Prerequisites
 - Python 3.9+
