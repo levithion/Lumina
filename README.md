@@ -52,13 +52,13 @@ graph TD
 
     subgraph Ingestion Pipeline
     IMG_DIR[Data Directory]
-    BULK_ING[bulk_ingest.py]
+    INGEST[sync_memes.py]
     CLIP_IMG[CLIP Model - Image Encoder]
     end
 
     %% Data Flow
     IMG_DIR -- Load Images --> BULK_ING
-    BULK_ING -- Generate Embeddings --> CLIP_IMG
+    INGEST -- Generate Embeddings --> CLIP_IMG
     CLIP_IMG -- Upsert Vectors & Metadata --> QDRANT
 
     %% Search Flow

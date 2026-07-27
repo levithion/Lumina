@@ -9,3 +9,9 @@ data/live/*.png
 data/live/*.gif
 data/live/*.webp
 qdrant_data/
+# Local image-ingestion artifacts are not part of the cloud deployment.
+data/*.jpg
+data/*.jpeg
+data/*.png
+data/*.gif
+data/*.webp
