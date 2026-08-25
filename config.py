@@ -1,6 +1,7 @@
 """Shared configuration for local and cloud deployments."""
 
 import os
+from pathlib import Path
 
 
 QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
@@ -41,6 +42,9 @@ CAPTION_ENABLED = os.getenv("CAPTION_ENABLED", "1") not in ("0", "false", "False
 MAX_DOWNLOAD_BYTES = int(os.getenv("MAX_DOWNLOAD_BYTES", str(20 * 1024 * 1024)))
 # Perceptual-hash Hamming distance at or below this counts as a near duplicate.
 PHASH_NEAR_DUPLICATE_DISTANCE = int(os.getenv("PHASH_NEAR_DUPLICATE_DISTANCE", "8"))
+# Local, private screenshot search: nothing from this mode ever leaves the machine.
+SCREENSHOT_COLLECTION_NAME = os.getenv("SCREENSHOT_COLLECTION_NAME", "lumina_screenshots_v1")
+SCREENSHOT_ROOT = os.getenv("SCREENSHOT_ROOT", str(Path.home() / "Screenshots"))
 
 
 def qdrant_client():

@@ -2,6 +2,7 @@ from types import SimpleNamespace
 
 from PIL import Image
 
+from ingest_screenshots import discover_images
 from meme_pipeline import build_point
 from meme_retrieval import (
     _text_score,
@@ -129,3 +130,40 @@ def test_build_point_payload_and_deterministic_id(tmp_path):
     assert len(payload["perceptual_hash"]) == 16
     assert len(first.vector["visual"]) == 512
     assert len(first.vector["semantic_text"]) == 384
+
+
+def test_build_point_screenshot_mode(tmp_path):
+    image_path = tmp_path / "shot.png"
+    Image.new("RGB", (8, 8), color=(10, 200, 10)).save(image_path)
+
+    point = build_point(
+        str(image_path),
+        StubEncoder(),
+        tags=("screenshot",),
+        media_type="screenshot",
+        captured_at="2026-08-25T09:00:00+00:00",
+    )
+
+    assert point.payload["media_type"] == "screenshot"
+    assert point.payload["created_at"] == "2026-08-25T09:00:00+00:00"
+    assert point.payload["tags"] == ["screenshot"]
+    # Memes keep the default ingestion timestamp behavior.
+    default_point = build_point(str(image_path), StubEncoder())
+    assert default_point.payload["media_type"] == "meme"
+    assert default_point.payload["created_at"].endswith("+00:00")
+
+
+def test_discover_images_filters_extensions_and_recursion(tmp_path):
+    (tmp_path / "a.png").write_bytes(b"x")
+    (tmp_path / "b.PNG").write_bytes(b"x")
+    (tmp_path / "notes.txt").write_text("skip me")
+    subdirectory = tmp_path / "projects"
+    subdirectory.mkdir()
+    (subdirectory / "d.jpg").write_bytes(b"x")
+
+    recursive = discover_images(tmp_path)
+    flat = discover_images(tmp_path, recursive=False)
+
+    assert recursive == sorted([str(tmp_path / "a.png"), str(tmp_path / "b.PNG"), str(subdirectory / "d.jpg")])
+    assert str(subdirectory / "d.jpg") not in flat
+    assert all(str(path).endswith((".png", ".PNG")) for path in flat)

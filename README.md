@@ -132,7 +132,24 @@ To index your own local folder instead: place images in `data/` and run
 
 ### 4. Run
 
-**Option A — standalone cloud app (recommended)**
+**Screenshot search — local, private mode**
+
+Point Lumina at your own screenshots and search them by meaning. Nothing is
+uploaded: images stay on disk, Qdrant runs in local Docker, and CLIP/SmolVLM
+run on your machine (Apple Silicon MPS works well).
+
+```bash
+docker compose up -d
+python3 ingest_screenshots.py --folder ~/Screenshots --limit 100  # try a small batch first
+streamlit run screenshot_app.py
+```
+
+Search "terminal error about permissions" or "hotel listing with brick wall",
+or drop a screenshot into the duplicate finder to check whether it is already
+indexed. Ingestion is resumable — rerun it any time; only new files are
+processed.
+
+**Option A — standalone cloud meme app (recommended)**
 
 ```bash
 streamlit run streamlit_app.py
@@ -144,9 +161,6 @@ streamlit run streamlit_app.py
 uvicorn app:app --host 0.0.0.0 --port 8000   # terminal 1
 streamlit run frontend.py                     # terminal 2
 ```
-
-Open http://localhost:8501 and try both tabs: text search and reverse image
-search.
 
 ---
 
@@ -162,8 +176,7 @@ All settings are environment variables (see `config.py`). Key ones:
 | `CAPTION_ENABLED` | `0` disables captioning entirely |
 | `HF_TOKEN` / `HF_DATASET_REPO` | Public image hosting |
 | `MAX_DOWNLOAD_BYTES` | Per-file download cap (default 20 MB) |
-
-On Streamlit Community Cloud, put `QDRANT_URL`/`QDRANT_API_KEY` in app Secrets.
+| `SCREENSHOT_ROOT` / `SCREENSHOT_COLLECTION_NAME` | Local screenshot mode folder and collection |
 Detailed deployment notes live in [`docs/deployment.md`](docs/deployment.md);
 ingestion internals in [`docs/ingestion.md`](docs/ingestion.md).
 

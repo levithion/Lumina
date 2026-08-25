@@ -68,6 +68,9 @@ class MemeCaptioner:
 
 
 def _parse_output(text: str) -> CaptionResult:
+    # Decoded output can include the prompt; keep only what follows the
+    # assistant marker. The marker's trailing colon survives the split, so
+    # lines may start with punctuation.
     body = re.split(r"\bassistant\b", text, flags=re.IGNORECASE)[-1]
     sensitive = False
     caption_lines: list[str] = []
@@ -75,7 +78,7 @@ def _parse_output(text: str) -> CaptionResult:
         stripped = line.strip()
         if not stripped:
             continue
-        match = re.match(r"^sensitive\s*:\s*(yes|no|true|false)\b", stripped, flags=re.IGNORECASE)
+        match = re.match(r"^[^\w\s]*sensitive\s*:\s*(yes|no|true|false)\b", stripped, flags=re.IGNORECASE)
         if match:
             sensitive = match.group(1).lower() in ("yes", "true")
         elif not caption_lines:

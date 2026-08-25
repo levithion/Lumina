@@ -81,7 +81,7 @@ class MemeEncoder:
         return self.text.encode(text or "meme", normalize_embeddings=True).tolist()
 
 
-def build_point(image_path: str, encoder: MemeEncoder, *, template: str = "", tags: Iterable[str] = (), metadata: dict[str, Any] | None = None, search_text: str = "", caption: str = "") -> PointStruct:
+def build_point(image_path: str, encoder: MemeEncoder, *, template: str = "", tags: Iterable[str] = (), metadata: dict[str, Any] | None = None, search_text: str = "", caption: str = "", media_type: str = "meme", captured_at: str | None = None) -> PointStruct:
     with Image.open(image_path) as source:
         image = source.convert("RGB")
         width, height = image.size
@@ -98,7 +98,7 @@ def build_point(image_path: str, encoder: MemeEncoder, *, template: str = "", ta
     payload = {
         "local_path": str(image_path),
         "image_url": public_image_url(image_path),
-        "media_type": "meme",
+        "media_type": media_type,
         "ocr_text": ocr_text,
         "normalized_text": normalize_text(ocr_text),
         "caption": caption_value,
@@ -112,7 +112,9 @@ def build_point(image_path: str, encoder: MemeEncoder, *, template: str = "", ta
         "height": height,
         "content_hash": content_hash,
         "perceptual_hash": perceptual_hash,
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        # Screenshots pass their file mtime so results can show real dates;
+        # memes keep the ingestion timestamp.
+        "created_at": captured_at or datetime.now(timezone.utc).isoformat(),
     }
     payload.update(metadata)
     return PointStruct(

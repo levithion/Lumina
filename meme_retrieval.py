@@ -100,6 +100,7 @@ def hybrid_search(
                 "template": payload.get("template", ""),
                 "tags": payload.get("tags", []),
                 "perceptual_hash": payload.get("perceptual_hash", ""),
+                "created_at": str(payload.get("created_at", "")),
                 "matched_on": [
                     label
                     for label, value in (
@@ -167,6 +168,7 @@ def reverse_image_search(
                 "subreddit": payload.get("subreddit", ""),
                 "template": payload.get("template", ""),
                 "tags": payload.get("tags", []),
+                "created_at": str(payload.get("created_at", "")),
             }
         )
     results.sort(key=lambda result: (result["match_tier"], result["score"]), reverse=True)
