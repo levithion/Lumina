@@ -9,7 +9,6 @@ so reruns skip anything already migrated (free resume).
 from __future__ import annotations
 
 import argparse
-import io
 import os
 import tempfile
 from pathlib import Path

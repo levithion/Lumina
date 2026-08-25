@@ -73,7 +73,6 @@ def hybrid_search(
         "visual": client.query_points(query=visual_vector, using="visual", **common).points,
         "semantic": client.query_points(query=text_vector, using="semantic_text", **common).points,
     }
-    weights = {"visual": _VISUAL_WEIGHT, "semantic": _SEMANTIC_WEIGHT}
     merged: dict[Any, dict[str, Any]] = {}
     for source_name, hits in sources.items():
         for hit in hits:

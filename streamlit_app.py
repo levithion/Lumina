@@ -2,6 +2,8 @@
 
 import streamlit as st
 from PIL import Image
+from qdrant_client import QdrantClient
+from sentence_transformers import SentenceTransformer
 
 from config import (
     CLIP_MODEL_NAME,
