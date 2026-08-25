@@ -1,0 +1,54 @@
+name: Diagnose Qdrant
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install client
+        run: pip install qdrant-client
+      - name: Inspect collections, payloads, and filter behavior
+        env:
+          QDRANT_URL: ${{ secrets.QDRANT_URL }}
+          QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
+        run: |
+          python - <<'PY'
+          import os
+
+          from qdrant_client import QdrantClient
+          from qdrant_client.models import FieldCondition, Filter, MatchValue
+
+          client = QdrantClient(url=os.environ["QDRANT_URL"], api_key=os.environ["QDRANT_API_KEY"])
+          print("collections:", [c.name for c in client.get_collections().collections])
+          active = os.environ.get("MEME_COLLECTION_NAME", "lumina_memes_v2")
+          for name in dict.fromkeys([active, "lumina_memes_v1"]):
+              try:
+                  print(f"{name}: {client.count(collection_name=name, exact=True).count} points")
+              except Exception as exc:
+                  print(f"{name}: ERROR {exc}")
+          try:
+              records, _ = client.scroll(collection_name=active, limit=3, with_payload=True)
+              for record in records:
+                  payload = record.payload or {}
+                  print("sample:", {k: str(payload.get(k))[:60] for k in ("title", "caption", "is_sensitive", "subreddit")})
+          except Exception as exc:
+              print("scroll ERROR:", exc)
+          import random
+          probe = [random.random() for _ in range(512)]
+          try:
+              unfiltered = client.query_points(collection_name=active, query=probe, using="visual", limit=5).points
+              filtered = client.query_points(
+                  collection_name=active, query=probe, using="visual", limit=5,
+                  query_filter=Filter(must_not=[FieldCondition(key="is_sensitive", match=MatchValue(value=True))]),
+              ).points
+              print(f"unfiltered hits: {len(unfiltered)} · safe-filtered hits: {len(filtered)}")
+          except Exception as exc:
+              print("query ERROR:", exc)
+          PY
