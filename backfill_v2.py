@@ -59,6 +59,11 @@ def main() -> None:
     parser.add_argument("--source-collection", default=LEGACY_COLLECTION_NAME)
     parser.add_argument("--target-collection", default="")
     parser.add_argument("--limit", type=int, default=0, help="cap migrated points (0 = all)")
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="re-upsert points even when they already exist in the target (enrichment mode)",
+    )
     args = parser.parse_args()
 
     target_collection = args.target_collection or MEME_COLLECTION_NAME
@@ -74,13 +79,15 @@ def main() -> None:
         nonlocal migrated, skipped_existing
         if not buffer:
             return
-        records = client.retrieve(
-            collection_name=target_collection,
-            ids=[point.id for point in buffer],
-        )
-        existing = {str(record.id) for record in records}
-        pending = [point for point in buffer if str(point.id) not in existing]
-        skipped_existing += len(buffer) - len(pending)
+        pending = buffer
+        if not args.overwrite:
+            records = client.retrieve(
+                collection_name=target_collection,
+                ids=[point.id for point in buffer],
+            )
+            existing = {str(record.id) for record in records}
+            pending = [point for point in buffer if str(point.id) not in existing]
+            skipped_existing += len(buffer) - len(pending)
         if pending:
             client.upsert(collection_name=target_collection, points=pending, wait=True)
             migrated += len(pending)

@@ -80,7 +80,7 @@ def _parse_output(text: str) -> CaptionResult:
             sensitive = match.group(1).lower() in ("yes", "true")
         elif not caption_lines:
             caption_lines.append(stripped)
-    return CaptionResult(caption=" ".join(caption_lines)[:400], is_sensitive=sensitive, raw=text.strip())
+    return CaptionResult(caption=" ".join(caption_lines)[:400].lstrip(":").strip(), is_sensitive=sensitive, raw=text.strip())
 
 
 class DisabledCaptioner:
@@ -99,6 +99,9 @@ def build_captioner(model_name: str = CAPTION_MODEL_NAME, device: str | None = N
         return DisabledCaptioner()
     try:
         return MemeCaptioner(model_name=model_name, device=device)
-    except Exception:
-        # Missing weights / no backend should never block ingestion entirely.
+    except Exception as exc:
+        # Missing weights / no backend should never block ingestion entirely,
+        # but the fallback must be loud — silent degradation is how empty
+        # captions went unnoticed across scheduled runs.
+        print(f"WARNING: captioning disabled, {model_name} failed to load ({exc})")
         return DisabledCaptioner()

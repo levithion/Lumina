@@ -1,18 +1,16 @@
-name: Sync fresh memes
+name: Enrich captions
 
 on:
-  schedule:
-    - cron: "*/15 * * * *"
   workflow_dispatch:
 
 concurrency:
-  group: meme-sync
+  group: enrich-captions
   cancel-in-progress: true
 
 jobs:
-  sync:
+  enrich:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -22,16 +20,13 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y tesseract-ocr
       - name: Install dependencies
         run: pip install -r requirements.txt
-      # Cache CLIP/MiniLM/SmolVLM weights between runs; first run pays once.
       - name: Restore model cache
         uses: actions/cache@v4
         with:
           path: ~/.cache/huggingface
           key: hf-models-lumina-v1
-      - name: Sync memes
+      - name: Caption and re-index existing points
         env:
           QDRANT_URL: ${{ secrets.QDRANT_URL }}
           QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          HF_DATASET_REPO: ${{ secrets.HF_DATASET_REPO }}
-        run: python sync_memes.py --source meme_api --limit 50
+        run: python backfill_v2.py --source-collection lumina_memes_v2 --target-collection lumina_memes_v2 --overwrite --limit 500
