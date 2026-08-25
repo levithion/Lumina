@@ -41,11 +41,15 @@ def resources():
 
 
 @st.cache_data(ttl=60)
-def indexed_count() -> int:
+def index_status() -> tuple[str, int]:
+    """Classify the active collection: ready, empty, missing, or unreachable."""
     try:
-        return resources()[2].count(collection_name=MEME_COLLECTION_NAME, exact=True).count
+        client = resources()[2]
+        if not client.collection_exists(MEME_COLLECTION_NAME):
+            return "missing", 0
+        return "ready", client.count(collection_name=MEME_COLLECTION_NAME, exact=True).count
     except Exception:
-        return -1
+        return "unreachable", -1
 
 
 try:
@@ -54,14 +58,20 @@ except Exception as exc:
     st.error(f"Cloud search is not configured: {exc}")
     st.stop()
 
-count = indexed_count()
-if count == 0:
+status, count = index_status()
+if status == "unreachable":
+    st.error("Qdrant is unreachable — check QDRANT_URL / QDRANT_API_KEY in app Secrets.")
+elif status == "missing":
+    st.warning(
+        f"Collection `{MEME_COLLECTION_NAME}` does not exist yet. Run `python backfill_v2.py` "
+        "to migrate the legacy index, `python sync_memes.py --source meme_api` to ingest fresh "
+        f"memes, or set `MEME_COLLECTION_NAME=lumina_memes_v1` in Secrets to serve the legacy index now."
+    )
+elif status == "ready" and count == 0:
     st.warning(
         f"Collection `{MEME_COLLECTION_NAME}` is empty. Run `python backfill_v2.py` to migrate "
         "the legacy index, or `python sync_memes.py --source meme_api` to ingest fresh memes."
     )
-elif count < 0:
-    st.error("Qdrant is unreachable — check QDRANT_URL / QDRANT_API_KEY.")
 
 with st.sidebar:
     limit = st.slider("Results", 1, 50, 12)
@@ -72,7 +82,7 @@ text_tab, image_tab = st.tabs(["🔎 Text search", "🖼️ Image search"])
 with text_tab:
     template = st.text_input("Template filter", placeholder="e.g. Drake")
     query = st.text_input("What meme are you looking for?", placeholder="e.g. programming failure")
-    if query and count != 0:
+    if query and status == "ready":
         try:
             results = hybrid_search(
                 client,
@@ -110,7 +120,7 @@ with image_tab:
     uploaded = st.file_uploader("Meme image", type=("png", "jpg", "jpeg", "webp", "gif"))
     camera = st.camera_input("…or snap one", help="Useful for screenshots of memes")
     probe = uploaded or camera
-    if probe and count != 0:
+    if probe and status == "ready":
         try:
             image = Image.open(probe).convert("RGB")
             results = reverse_image_search(
