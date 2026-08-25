@@ -5,7 +5,10 @@ import os
 
 QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", "")
-MEME_COLLECTION_NAME = os.getenv("MEME_COLLECTION_NAME", "lumina_memes_v1")
+# Active serving/ingest collection. Roll back to the pre-VLM index by setting
+# MEME_COLLECTION_NAME=lumina_memes_v1.
+MEME_COLLECTION_NAME = os.getenv("MEME_COLLECTION_NAME", "lumina_memes_v2")
+LEGACY_COLLECTION_NAME = os.getenv("LEGACY_COLLECTION_NAME", "lumina_memes_v1")
 IMAGE_ROOT = os.getenv("IMAGE_ROOT", "data")
 IMAGE_BASE_URL = os.getenv("IMAGE_BASE_URL", "")
 LIVE_IMAGE_DIR = os.getenv("LIVE_IMAGE_DIR", "data/live")
@@ -31,6 +34,13 @@ HF_TOKEN = os.getenv("HF_TOKEN", "")
 HF_DATASET_REPO = os.getenv("HF_DATASET_REPO", "")
 CLIP_MODEL_NAME = os.getenv("CLIP_MODEL_NAME", "clip-ViT-B-32")
 TEXT_MODEL_NAME = os.getenv("TEXT_MODEL_NAME", "all-MiniLM-L6-v2")
+# Vision-language model used at ingestion time only; never loaded by the
+# serving app. SmolVLM-500M runs in seconds per image on free CI CPUs.
+CAPTION_MODEL_NAME = os.getenv("CAPTION_MODEL_NAME", "HuggingFaceTB/SmolVLM-500M-Instruct")
+CAPTION_ENABLED = os.getenv("CAPTION_ENABLED", "1") not in ("0", "false", "False")
+MAX_DOWNLOAD_BYTES = int(os.getenv("MAX_DOWNLOAD_BYTES", str(20 * 1024 * 1024)))
+# Perceptual-hash Hamming distance at or below this counts as a near duplicate.
+PHASH_NEAR_DUPLICATE_DISTANCE = int(os.getenv("PHASH_NEAR_DUPLICATE_DISTANCE", "8"))
 
 
 def qdrant_client():

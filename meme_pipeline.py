@@ -40,15 +40,21 @@ def normalize_text(value: str) -> str:
     return re.sub(r"[^\w\s]", " ", value.lower(), flags=re.UNICODE).strip()
 
 
-def image_hashes(image_path: str) -> tuple[str, str]:
-    raw = Path(image_path).read_bytes()
-    content_hash = hashlib.sha256(raw).hexdigest()
+def compute_phash(image: Image.Image) -> str:
+    """Hex perceptual hash for near-duplicate detection; empty when unavailable."""
     try:
         import imagehash
 
-        perceptual_hash = str(imagehash.phash(Image.open(image_path)))
+        return str(imagehash.phash(image))
     except Exception:
-        perceptual_hash = ""
+        return ""
+
+
+def image_hashes(image_path: str) -> tuple[str, str]:
+    raw = Path(image_path).read_bytes()
+    content_hash = hashlib.sha256(raw).hexdigest()
+    with Image.open(image_path) as source:
+        perceptual_hash = compute_phash(source)
     return content_hash, perceptual_hash
 
 
@@ -75,16 +81,19 @@ class MemeEncoder:
         return self.text.encode(text or "meme", normalize_embeddings=True).tolist()
 
 
-def build_point(image_path: str, encoder: MemeEncoder, *, template: str = "", tags: Iterable[str] = (), metadata: dict[str, Any] | None = None, search_text: str = "") -> PointStruct:
+def build_point(image_path: str, encoder: MemeEncoder, *, template: str = "", tags: Iterable[str] = (), metadata: dict[str, Any] | None = None, search_text: str = "", caption: str = "") -> PointStruct:
     with Image.open(image_path) as source:
         image = source.convert("RGB")
         width, height = image.size
         ocr_text = extract_ocr_text(image)
 
     content_hash, perceptual_hash = image_hashes(image_path)
+    metadata = metadata or {}
     tags_list = sorted({str(tag).strip().lower() for tag in tags if str(tag).strip()})
+    template_value = template.strip()
+    caption_value = caption.strip()
     search_document = " ".join(
-        part for part in (ocr_text, template, " ".join(tags_list), search_text) if part
+        part for part in (ocr_text, caption_value, template_value, " ".join(tags_list), search_text) if part
     ) or Path(image_path).stem
     payload = {
         "local_path": str(image_path),
@@ -92,16 +101,20 @@ def build_point(image_path: str, encoder: MemeEncoder, *, template: str = "", ta
         "media_type": "meme",
         "ocr_text": ocr_text,
         "normalized_text": normalize_text(ocr_text),
-        "template": template.strip(),
+        "caption": caption_value,
+        "template": template_value,
+        "template_key": template_value.lower(),
         "tags": tags_list,
+        # VLM safety verdict; must_not filtering keeps legacy points without
+        # this field visible.
+        "is_sensitive": bool(metadata.get("is_sensitive", False)),
         "width": width,
         "height": height,
         "content_hash": content_hash,
         "perceptual_hash": perceptual_hash,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
-    if metadata:
-        payload.update(metadata)
+    payload.update(metadata)
     return PointStruct(
         id=deterministic_id(content_hash),
         vector={

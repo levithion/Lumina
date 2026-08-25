@@ -3,32 +3,38 @@ from qdrant_client.models import Distance, PayloadSchemaType, TextIndexParams, T
 from config import MEME_COLLECTION_NAME, qdrant_client
 
 
-def initialize_meme_database() -> None:
+def initialize_meme_database(collection_name: str = "") -> None:
     client = qdrant_client()
-    if not client.collection_exists(MEME_COLLECTION_NAME):
+    name = collection_name or MEME_COLLECTION_NAME
+    if not client.collection_exists(name):
         client.create_collection(
-            collection_name=MEME_COLLECTION_NAME,
+            collection_name=name,
             vectors_config={
                 "visual": VectorParams(size=512, distance=Distance.COSINE),
                 "semantic_text": VectorParams(size=384, distance=Distance.COSINE),
             },
         )
-    # Payload indexes make template/tag filtering fast. Text indexing is
-    # best-effort because older Qdrant versions may not expose all options.
-    for field, schema in (("template", PayloadSchemaType.KEYWORD), ("tags", PayloadSchemaType.KEYWORD)):
+    # Payload indexes make filter pushdown fast. template_key backs the
+    # case-insensitive template filter; is_sensitive backs safe-mode filtering.
+    for field, schema in (
+        ("template", PayloadSchemaType.KEYWORD),
+        ("template_key", PayloadSchemaType.KEYWORD),
+        ("tags", PayloadSchemaType.KEYWORD),
+        ("is_sensitive", PayloadSchemaType.BOOL),
+    ):
         try:
-            client.create_payload_index(collection_name=MEME_COLLECTION_NAME, field_name=field, field_schema=schema)
+            client.create_payload_index(collection_name=name, field_name=field, field_schema=schema)
         except Exception:
             pass
     try:
         client.create_payload_index(
-            collection_name=MEME_COLLECTION_NAME,
+            collection_name=name,
             field_name="normalized_text",
             field_schema=TextIndexParams(type="text", tokenizer=TokenizerType.WORD, lowercase=True),
         )
     except Exception:
         pass
-    print(f"Meme collection ready: {MEME_COLLECTION_NAME}")
+    print(f"Meme collection ready: {name}")
 
 
 if __name__ == "__main__":

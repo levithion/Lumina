@@ -5,10 +5,14 @@ on:
     - cron: "*/15 * * * *"
   workflow_dispatch:
 
+concurrency:
+  group: meme-sync
+  cancel-in-progress: true
+
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -16,11 +20,16 @@ jobs:
           python-version: "3.11"
       - name: Install dependencies
         run: pip install -r requirements.txt
+      # Cache CLIP/MiniLM/SmolVLM weights between runs; first run pays once.
+      - name: Restore model cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: hf-models-lumina-v1
       - name: Sync memes
         env:
           QDRANT_URL: ${{ secrets.QDRANT_URL }}
           QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           HF_DATASET_REPO: ${{ secrets.HF_DATASET_REPO }}
-          MEME_API_SUBREDDITS: memes,dankmemes,wholesomememes,programmerhumor,carmemes,car_memes,carscirclejerk
         run: python sync_memes.py --source meme_api --limit 50
