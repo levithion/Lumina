@@ -46,6 +46,8 @@ def upload_images(pairs: list[tuple[str, str]]) -> dict[str, str]:
             repo_id=HF_DATASET_REPO,
             repo_type="dataset",
             operations=operations,
+            # Required keyword in huggingface_hub 1.x; omitting it raises.
+            commit_message=f"Add {len(chunk)} meme image(s)",
             token=HF_TOKEN,
         )
         urls.update({object_name: _resolve_url(object_name) for _, object_name in chunk})

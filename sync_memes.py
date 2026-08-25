@@ -211,10 +211,15 @@ def main() -> None:
     captioner = build_captioner()
     while True:
         try:
-            sync_once(args.source, args.limit, client, encoder, captioner)
+            stats = sync_once(args.source, args.limit, client, encoder, captioner)
         except Exception as exc:
             print(f"Sync failed: {exc}")
+            stats = None
         if not args.watch:
+            if stats is not None and stats["fetched"] == 0:
+                # Every source failed; exit non-zero so scheduled runs show red
+                # instead of silently indexing nothing.
+                raise SystemExit("All meme sources failed; see logs above")
             break
         time.sleep(max(args.interval, 60))
 
