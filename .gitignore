@@ -9,6 +9,9 @@ data/live/*.png
 data/live/*.gif
 data/live/*.webp
 qdrant_data/
+# Local memory-search runtime state (per machine, never committed).
+.lumina_state.json
+.lumina.lock
 # Local image-ingestion artifacts are not part of the cloud deployment.
 data/*.jpg
 data/*.jpeg

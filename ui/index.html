@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lumina · Private Memory Search</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">◈ Lumina</div>
+    <div class="searchwrap">
+      <input id="search" type="search" autocomplete="off"
+             placeholder='Search your memory… try "terminal error permissions last week"' />
+      <span id="datechip" class="chip hidden"></span>
+      <button id="dupbtn" class="ghost" title="Duplicate finder">⧉ Duplicates</button>
+    </div>
+  </header>
+
+  <aside class="sidebar">
+    <h2>Library</h2>
+    <div id="status">
+      <div class="stat"><span id="st-points" class="big">…</span><label>screenshots & photos</label></div>
+      <div class="row"><span id="st-watching" class="dot"></span><span id="st-watchtext">checking watcher…</span></div>
+      <div class="row muted" id="st-folders"></div>
+      <div class="row muted" id="st-lastscan"></div>
+      <button id="reindex" class="ghost wide">↻ Reindex now</button>
+      <p class="hint">Everything stays on this machine.</p>
+    </div>
+  </aside>
+
+  <main id="main">
+    <section id="duplicates" class="panel hidden">
+      <h2>Duplicate finder</h2>
+      <div id="dropzone">
+        <p><strong>Drop an image here</strong><br />or click to pick a file — exact reposts and near-duplicates are flagged.</p>
+        <input id="dupfile" type="file" accept="image/png,image/jpeg,image/webp,image/heic" />
+      </div>
+      <div id="dupverdict" class="hidden"></div>
+      <div id="dupresults" class="grid small"></div>
+    </section>
+
+    <div id="similarbar" class="crumb hidden">
+      <span>Similar to selected</span>
+      <button id="similarback" class="ghost small-btn">✕ back to search</button>
+    </div>
+
+    <section id="grid" class="grid"></section>
+    <div id="empty" class="emptystate hidden">
+      <p id="emptymsg">Type what you remember — captions, on-screen text, and visuals are all searched.</p>
+    </div>
+  </main>
+
+  <div id="lightbox" class="lightbox hidden">
+    <div class="lb-body">
+      <img id="lb-img" alt="" />
+      <div class="lb-meta">
+        <p id="lb-caption"></p>
+        <p id="lb-sub" class="muted"></p>
+        <div class="lb-actions">
+          <button id="lb-reveal" class="ghost">📂 Reveal in Finder</button>
+          <button id="lb-similar" class="ghost">⤳ Find similar</button>
+          <button id="lb-copy" class="ghost">⧉ Copy image</button>
+          <button id="lb-close" class="ghost">✕ Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

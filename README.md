@@ -1,196 +1,150 @@
-# Lumina: Multimodal Meme Search Engine
+# Lumina — Private Memory Search for macOS
 
-**🚀 Live Demo:** [https://lumina-search-engine.streamlit.app](https://lumina-search-engine.streamlit.app)
+**Find any screenshot or photo by describing it.** "The terminal error about
+permissions last week", "hotel listing with a brick wall", "that whiteboard
+from March" — Lumina indexes your screenshots and photos, captions them with a
+local vision model, and makes everything searchable by *meaning*, *on-screen
+text*, and *time*. Nothing ever leaves your machine.
 
-[![Live Demo](https://img.shields.io/badge/demo-live-ff4b4b?logo=streamlit&logoColor=white)](https://lumina-search-engine.streamlit.app)
-[![Sync schedule](https://img.shields.io/badge/sync-every%2015%20minutes-2088ff?logo=githubactions&logoColor=white)](.github/workflows/meme-sync.yml)
-[![Python](https://img.shields.io/badge/python-3.11-3776ab?logo=python&logoColor=white)](requirements.txt)
-[![Streamlit](https://img.shields.io/badge/UI-Streamlit-ff4b4b?logo=streamlit&logoColor=white)](https://streamlit.io/)
-[![Qdrant](https://img.shields.io/badge/vectors-Qdrant-dc244c)](https://qdrant.tech/)
+[![Python](https://img.shields.io/badge/python-3.11+-3776ab?logo=python&logoColor=white)](requirements.txt)
+[![Tests](https://img.shields.io/badge/tests-passing-4ade80)](.github/workflows/ci.yml)
+[![Local-first](https://img.shields.io/badge/cloud-none-4ade80)](#privacy-model)
 
-## Overview
+## What you get
 
-**Lumina** is a meme search engine that finds images by caption, meaning,
-reaction, template — **or by uploading another image of the meme**. It maps
-images and text into a shared vector space with OpenAI's **CLIP**, enriches
-every indexed meme with **SmolVLM-generated captions and safety verdicts** at
-ingestion time, detects reposts with **perceptual hashing**, and queries
-everything through the **Qdrant** vector database.
+- **Meaning search** — CLIP visual vectors + MiniLM text vectors over VLM
+  captions and OCR text, fused and reranked in one query.
+- **Time-aware queries** — type *"invoices since June"* or *"that bug
+  yesterday"*; the date range is parsed out of your sentence and pushed into
+  the database as a real filter.
+- **Reverse image / duplicate finder** — drop any image; exact reposts and
+  near-duplicates are flagged via perceptual hashing.
+- **Find similar** — every result is one click away from its visual neighbors.
+- **Live index** — an FSEvents watcher picks up new screenshots ~10 s after
+  you take them.
+- **Native-feeling app** — pywebview window over a local FastAPI server; no
+  browser tabs, no cloud, no accounts.
 
-### What's new in v3
-
-- **Reverse meme search** — upload or snap a meme; exact reposts and
-  near-duplicates (pHash distance ≤ 8) are flagged and ranked first.
-- **VLM captions** — SmolVLM describes each meme during ingestion, so search
-  matches on *meaning* ("Drake rejecting writing tests"), not just OCR'd words.
-  The VLM never runs at query time, keeping the hosted app's memory flat.
-- **Real safe-content filtering** — the safety checkbox is now backed by an
-  actual `is_sensitive` verdict from the captioner, enforced as a Qdrant filter
-  *before* top-K truncation (no more silently missing results).
-- **Dedup-first ingestion** — two dedup layers (source IDs + content-hash
-  point IDs) mean scheduled syncs skip known memes before downloading or
-  embedding anything.
-- **Batched everything** — Qdrant upserts and Hugging Face uploads happen in
-  batches, not per item.
-
----
-
-## System Architecture
-
-```mermaid
-graph TD
-    subgraph Frontend
-    UI[Streamlit UI - streamlit_app.py / frontend.py]
-    end
-
-    subgraph Backend API
-    API[FastAPI Server - app.py]
-    CLIP_TXT[CLIP Text Encoder]
-    CLIP_IMG[CLIP Image Encoder]
-    end
-
-    subgraph Vector Database
-    QDRANT[(Qdrant Local/Cloud)]
-    end
-
-    subgraph Ingestion Pipeline - GitHub Actions every 15 min
-    SOURCES[meme-api / Reddit / Imgur / Imgflip]
-    SYNC[sync_memes.py - dedup-first]
-    VLM[SmolVLM Captioner + Safety Verdict]
-    HF[Hugging Face Dataset - image hosting]
-    end
-
-    %% Ingestion flow
-    SOURCES -- Fresh posts --> SYNC
-    SYNC -- Skip known source IDs --> MANIFEST[(manifest.jsonl)]
-    SYNC -- New images --> VLM
-    VLM -- Caption + is_sensitive --> SYNC
-    SYNC -- Images --> HF
-    SYNC -- Batch upsert vectors + payload --> QDRANT
-
-    %% Text search flow
-    UI -- "Search 'a tall building'" --> API
-    API -- Text query --> CLIP_TXT
-    API -- Cosine similarity + pushed-down filters --> QDRANT
-    QDRANT -- Top-K payloads --> API
-    API -- JSON --> UI
-    UI -- Grid with captions/subreddit --> User((User))
-
-    %% Reverse image search flow
-    UI -- Upload meme --> API
-    API -- Image query --> CLIP_IMG
-    API -- pHash Hamming distance vs stored hashes --> QDRANT
-```
-
-**Why text can find images:** CLIP is trained on millions of image-text pairs
-to embed both into the same space, so "cat" lands near cat pictures. Lumina
-queries two named vectors per point (`visual` from CLIP, `semantic_text` from
-MiniLM over caption+OCR+title+tags) and fuses them with an exact-term score.
-
----
-
-## Getting Started
-
-### Prerequisites
-- Python 3.11+
-- Docker (optional, for local Qdrant)
-- Tesseract (`brew install tesseract` / `apt install tesseract-ocr`) — optional;
-  without it OCR text is empty but captions still work.
-
-### 1. Install
+## Quick start
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+
+python main.py          # opens the Lumina window, indexes ~/Screenshots
 ```
 
-### 2. Start Qdrant locally (optional)
+First start loads CLIP + MiniLM (and optionally SmolVLM for captioning) and
+runs the initial scan — grab a coffee on big libraries. After that, indexing
+is incremental and cheap.
+
+Useful variants:
 
 ```bash
-docker-compose up -d   # verify at http://localhost:6333
+python main.py --folder ~/Pictures --watch      # different library root
+python main.py --no-watch                       # manual reindex only
+python main.py --web                            # headless; open http://127.0.0.1:8337
 ```
 
-### 3. Populate the database
+Double-click alternative: `Lumina.command` (Finder → double-click).
 
-Migrate an existing legacy index into the captioned collection:
+## How it works
 
-```bash
-python3 backfill_v2.py            # resumable; add --limit 3000 for a fast demo
+```mermaid
+graph LR
+    subgraph One process - main.py
+        UI[pywebview window<br/>ui/index.html]
+        API[FastAPI server.py]
+        MODELS[CLIP + MiniLM]
+        WATCHER[FSEvents watcher]
+        INGEST[scan_library<br/>stat-cache · dedup · repair · sweep]
+    end
+
+    LIB[(~/Screenshots<br/>photos · HEIC · JPEG)]
+    DB[(Qdrant embedded<br/>qdrant_data/)]
+
+    LIB -- changes --> WATCHER -- debounced --> INGEST --> DB
+    INGEST -- "VLM caption + OCR + EXIF date" --> DB
+    UI -- "/api/search?q=…" --> API
+    API -- query embedding --> MODELS
+    API -- "hybrid search + date filter" --> DB
+    DB -- top-K payloads --> API --> UI
 ```
 
-…or ingest fresh memes:
+**Why text finds images:** every indexed file gets two vectors — a CLIP
+*visual* embedding and a MiniLM *semantic_text* embedding of
+`caption + OCR + tags` — plus exact-term scoring, fused with per-profile
+weights (`memory`: 10% visual / 50% semantic / 40% exact). Date phrases like
+*"last week"* become `DatetimeRange` filters evaluated inside Qdrant before
+top-K truncation.
 
-```bash
-export HF_TOKEN="hf..."
-export HF_DATASET_REPO="you/lumina-memes"
-python3 sync_memes.py --source meme_api --limit 100
-```
+**Why rescans are cheap:** a stat-signature cache (size + mtime) skips
+unchanged files without re-hashing; content hashes make point IDs stable, so
+moved files are repaired in place instead of re-captioned.
 
-To index your own local folder instead: place images in `data/` and run
-`python3 ingest_memes.py data`.
+## The API
 
-### 4. Run
+The UI talks to these; curl them too at `http://127.0.0.1:8337`:
 
-**Screenshot search — local, private mode**
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /api/search?q=…&limit=&safe=` | hybrid meaning search with NL date parsing |
+| `GET /api/similar/{point_id}` | visual neighbors of an indexed item |
+| `POST /api/duplicate` | multipart image upload → repost verdict |
+| `GET /api/image?path=` | serve an **indexed** file only |
+| `POST /api/open` | reveal an **indexed** file in Finder |
+| `GET /api/status` | counts, watcher state, last scan, failures |
+| `POST /api/reindex` | run an incremental scan now |
 
-Point Lumina at your own screenshots and search them by meaning. Nothing is
-uploaded: images stay on disk, Qdrant runs in local Docker, and CLIP/SmolVLM
-run on your machine (Apple Silicon MPS works well).
-
-```bash
-docker compose up -d
-python3 ingest_screenshots.py --folder ~/Screenshots --limit 100  # try a small batch first
-streamlit run screenshot_app.py
-```
-
-Search "terminal error about permissions" or "hotel listing with brick wall",
-or drop a screenshot into the duplicate finder to check whether it is already
-indexed. Ingestion is resumable — rerun it any time; only new files are
-processed.
-
-**Option A — standalone cloud meme app (recommended)**
-
-```bash
-streamlit run streamlit_app.py
-```
-
-**Option B — decoupled local mode**
-
-```bash
-uvicorn app:app --host 0.0.0.0 --port 8000   # terminal 1
-streamlit run frontend.py                     # terminal 2
-```
-
----
+Image/open endpoints verify the path exists in the index before touching the
+filesystem — nothing outside your library is reachable.
 
 ## Configuration
 
-All settings are environment variables (see `config.py`). Key ones:
+Environment variables (see `config.py`):
 
-| Variable | Purpose |
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `SCREENSHOT_ROOT` | `~/Screenshots` | library folder to index/watch |
+| `MEMORY_COLLECTION_NAME` | `lumina_memory_v1` | active Qdrant collection |
+| `MEMORY_STORAGE_PATH` | `./qdrant_data` | embedded Qdrant data directory |
+| `SERVER_HOST` / `SERVER_PORT` | `127.0.0.1:8337` | local API/UI bind address |
+| `CAPTION_ENABLED` | `1` | SmolVLM captioning during ingestion |
+| `CAPTION_MODEL_NAME` | `SmolVLM-500M-Instruct` | ingestion-time VLM |
+| `RETRIEVAL_PROFILE` | `memory` | score-fusion weights (`memory` / `meme`) |
+| `QDRANT_URL` *(optional)* | unset → embedded | set to use a Qdrant server/Docker instead |
+
+## CLI tools
+
+| Command | Purpose |
 | --- | --- |
-| `QDRANT_URL` / `QDRANT_API_KEY` | Qdrant endpoint |
-| `MEME_COLLECTION_NAME` | Active collection (default `lumina_memes_v2`; set to `lumina_memes_v1` to roll back) |
-| `CAPTION_MODEL_NAME` | Ingestion-time VLM (default `HuggingFaceTB/SmolVLM-500M-Instruct`) |
-| `CAPTION_ENABLED` | `0` disables captioning entirely |
-| `HF_TOKEN` / `HF_DATASET_REPO` | Public image hosting |
-| `MAX_DOWNLOAD_BYTES` | Per-file download cap (default 20 MB) |
-| `SCREENSHOT_ROOT` / `SCREENSHOT_COLLECTION_NAME` | Local screenshot mode folder and collection |
-Detailed deployment notes live in [`docs/deployment.md`](docs/deployment.md);
-ingestion internals in [`docs/ingestion.md`](docs/ingestion.md).
+| `python main.py` | the app (server + window + watcher) |
+| `python ingest_screenshots.py` | one-shot incremental scan, then exit |
+| `python ingest_screenshots.py --watch` | standalone watcher (no UI/server) |
+| `python server.py --web` | API only |
 
-## Current limitations
+See [`docs/watch-mode.md`](docs/watch-mode.md) for debounce tuning, the stat
+cache, and keeping the index fresh across reboots via launchd
+([`launchd/com.lumina.watch.plist`](launchd/com.lumina.watch.plist)).
 
-- **Feed coverage:** the default source samples configured subreddits via
-  `meme-api.com`; it does not search all of Reddit, and unindexed topics have
-  nothing to return.
-- **Search freshness:** new memes become searchable after the next successful
-  workflow run; GitHub Actions schedules can be delayed.
-- **Source availability:** unofficial feeds may rate-limit or disappear;
-  official Reddit API access remains preferable for production.
-- **Licensing/moderation:** memes stay hosted by their sources/HF dataset;
-  verify terms and respect takedowns. The safe filter is a model heuristic,
-  not a guarantee.
-- **Free-tier limits:** Qdrant Cloud, Hugging Face, Streamlit Community Cloud,
-  and GitHub Actions all carry quotas.
+## Privacy model
+
+- Images never leave the machine. Embeddings, captions, and OCR all run
+  locally; the server binds to `127.0.0.1` only.
+- Data lives in two places: `qdrant_data/` (vectors + metadata) and
+  `.lumina_state.json` (scan cache). Delete both to forget everything;
+  uninstalling is just deleting the project folder.
+- The safe-content filter is a SmolVLM heuristic enforced as a database
+  filter — helpful, not a guarantee.
+
+## Limitations
+
+- macOS-first: Finder reveal (`open -R`) and launchd integration assume macOS;
+  the engine itself is portable Python.
+- First full-library index is slow while SmolVLM captions each new file
+  (set `CAPTION_ENABLED=0` for a fast OCR+visual-only pass).
+- Tesseract (`brew install tesseract`) is optional but recommended — OCR
+  materially improves recall on text-heavy screenshots.
+- Embedded Qdrant allows exactly one process per data directory; that's why
+  `main.py` hosts everything in a single process.

@@ -16,11 +16,16 @@ def initialize_meme_database(collection_name: str = "") -> None:
         )
     # Payload indexes make filter pushdown fast. template_key backs the
     # case-insensitive template filter; is_sensitive backs safe-mode filtering.
+    # created_at/media_type/local_path back memory-mode date, type, and
+    # stale-sweep operations.
     for field, schema in (
         ("template", PayloadSchemaType.KEYWORD),
         ("template_key", PayloadSchemaType.KEYWORD),
         ("tags", PayloadSchemaType.KEYWORD),
         ("is_sensitive", PayloadSchemaType.BOOL),
+        ("media_type", PayloadSchemaType.KEYWORD),
+        ("local_path", PayloadSchemaType.KEYWORD),
+        ("created_at", PayloadSchemaType.DATETIME),
     ):
         try:
             client.create_payload_index(collection_name=name, field_name=field, field_schema=schema)

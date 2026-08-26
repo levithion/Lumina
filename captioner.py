@@ -1,7 +1,7 @@
 """Vision-language captioning and safety classification for ingestion.
 
-Runs only inside ingestion pipelines (sync_memes.py, backfill_v2.py); the
-serving apps never load this model, keeping Streamlit Cloud memory flat.
+Runs only inside ingestion pipelines (ingest_screenshots.py, server.py's
+reindex path); the serving apps never load this model.
 """
 
 from __future__ import annotations
@@ -22,11 +22,37 @@ class CaptionResult:
     raw: str = ""
 
 
-_CAPTION_PROMPT = (
-    "Describe this meme in one concise sentence, including any visible text. "
+_SENSITIVE_INSTRUCTION = (
     "Then on a new line write exactly 'Sensitive: yes' if the image contains "
     "pornography, extreme violence, or hate symbols, otherwise 'Sensitive: no'."
 )
+
+# Per-media-type prompts. Captions are the primary recall driver for meaning
+# search, so each variant asks for what a searcher would remember.
+_CAPTION_PROMPTS = {
+    "screenshot": (
+        "Describe this screenshot in one or two concise sentences: which app or "
+        "website it shows, any visible headings, filenames, error messages or "
+        "other on-screen text, and what the screen is being used for. "
+        + _SENSITIVE_INSTRUCTION
+    ),
+    "photo": (
+        "Describe this photo in one concise sentence: the main subject, setting, "
+        "and any visible signs or text. "
+        + _SENSITIVE_INSTRUCTION
+    ),
+    "meme": (
+        "Describe this meme in one concise sentence, including any visible text. "
+        + _SENSITIVE_INSTRUCTION
+    ),
+}
+
+_DEFAULT_PROMPT = _CAPTION_PROMPTS["photo"]
+
+
+def caption_prompt(media_type: str = "") -> str:
+    """Pick the captioning prompt matching how the file was captured."""
+    return _CAPTION_PROMPTS.get((media_type or "").strip().lower(), _DEFAULT_PROMPT)
 
 
 class MemeCaptioner:
@@ -46,7 +72,7 @@ class MemeCaptioner:
         self._model = AutoModelForImageTextToText.from_pretrained(model_name, torch_dtype=dtype).to(self._device)
         self._model.eval()
 
-    def caption_image(self, image: Image.Image) -> CaptionResult:
+    def caption_image(self, image: Image.Image, media_type: str = "") -> CaptionResult:
         import torch
 
         conversation = [
@@ -54,7 +80,7 @@ class MemeCaptioner:
                 "role": "user",
                 "content": [
                     {"type": "image"},
-                    {"type": "text", "text": _CAPTION_PROMPT},
+                    {"type": "text", "text": caption_prompt(media_type)},
                 ],
             }
         ]
@@ -92,7 +118,7 @@ class DisabledCaptioner:
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         pass
 
-    def caption_image(self, image: Image.Image) -> CaptionResult:
+    def caption_image(self, image: Image.Image, media_type: str = "") -> CaptionResult:
         return CaptionResult()
 
 

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Lumina agent: keeps the index fresh and the local API available after login.
+
+  Install (edit YOUR_USER first):
+    cp launchd/com.lumina.watch.plist ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/com.lumina.watch.plist
+
+  Stop / uninstall:
+    launchctl unload ~/Library/LaunchAgents/com.lumina.watch.plist
+    rm ~/Library/LaunchAgents/com.lumina.watch.plist
+
+  This runs main.py in headless (--web) mode: API + watcher without a window.
+  Open http://127.0.0.1:8337 any time, or remove --web below to get the
+  native window at every login instead.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.lumina.watch</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/YOUR_USER/Documents/Project/Lumina/.venv/bin/python</string>
+        <string>/Users/YOUR_USER/Documents/Project/Lumina/main.py</string>
+        <string>--web</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/YOUR_USER/Documents/Project/Lumina</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <!-- Optional overrides; defaults live in config.py
+        <key>SCREENSHOT_ROOT</key>
+        <string>/Users/YOUR_USER/Screenshots</string>
+        -->
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/lumina-watch.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/lumina-watch.log</string>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+    <key>Nice</key>
+    <integer>10</integer>
+</dict>
+</plist>

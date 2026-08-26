@@ -82,8 +82,10 @@ class MemeEncoder:
 
 
 def build_point(image_path: str, encoder: MemeEncoder, *, template: str = "", tags: Iterable[str] = (), metadata: dict[str, Any] | None = None, search_text: str = "", caption: str = "", media_type: str = "meme", captured_at: str | None = None) -> PointStruct:
-    with Image.open(image_path) as source:
-        image = source.convert("RGB")
+    from media_utils import open_image
+
+    with open_image(image_path) as source:
+        image = source
         width, height = image.size
         ocr_text = extract_ocr_text(image)
 
