@@ -17,7 +17,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 from PIL import Image  # noqa: E402
 
 import server as server_module  # noqa: E402
-from meme_pipeline import compute_phash  # noqa: E402
+from pipeline import compute_phash  # noqa: E402
 
 
 class Vec(list):

@@ -28,9 +28,9 @@ from config import (
     SCREENSHOT_ROOT,
     qdrant_client,
 )
-from init_meme_db import initialize_meme_database
+from init_db import initialize_database
 from media_utils import PHOTO_EXTENSIONS, capture_datetime, detect_media_type, open_image
-from meme_pipeline import MemeEncoder, build_point, deterministic_id
+from pipeline import ImageEncoder, build_point, deterministic_id
 
 UPSERT_BATCH = 32
 DISCOVER_EXTENSIONS = PHOTO_EXTENSIONS
@@ -175,7 +175,7 @@ def scan_library(
     folder: Path,
     collection_name: str,
     *,
-    encoder: MemeEncoder,
+    encoder: ImageEncoder,
     captioner: Any,
     client: Any,
     state: dict[str, Any],
@@ -336,8 +336,8 @@ def _snapshot_state(
     state["failures"] = failures
 
 
-def load_models() -> tuple[MemeEncoder, Any]:
-    encoder = MemeEncoder()
+def load_models() -> tuple[ImageEncoder, Any]:
+    encoder = ImageEncoder()
     try:
         from captioner import build_captioner
 
@@ -421,7 +421,7 @@ def main() -> None:
     if not folder.is_dir():
         raise SystemExit(f"Not a folder: {folder}")
 
-    initialize_meme_database(args.collection)
+    initialize_database(args.collection)
 
     with InstanceLock():
         if args.watch:

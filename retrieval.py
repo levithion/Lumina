@@ -194,7 +194,7 @@ def reverse_image_search(
     safe_only: bool = True,
     near_duplicate_distance: int = 8,
 ) -> list[dict[str, Any]]:
-    """Find memes visually similar to an uploaded image.
+    """Find indexed items visually similar to an uploaded image.
 
     Perceptual-hash distance flags reposts/near-duplicates; those are promoted
     above plain CLIP-neighbors so the original ranks first.

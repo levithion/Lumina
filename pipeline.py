@@ -1,4 +1,4 @@
-"""Meme-specific OCR, metadata, embedding, and indexing helpers."""
+"""Image OCR, metadata, embedding, and indexing helpers for memory search."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from PIL import Image
 from qdrant_client.models import PointStruct
 from sentence_transformers import SentenceTransformer
 
-from config import CLIP_MODEL_NAME, IMAGE_BASE_URL, TEXT_MODEL_NAME
+from config import CLIP_MODEL_NAME, TEXT_MODEL_NAME
 
 
 def device_name() -> str:
@@ -62,13 +62,7 @@ def deterministic_id(content_hash: str) -> str:
     return str(uuid.UUID(content_hash[:32]))
 
 
-def public_image_url(path: str) -> str:
-    if not IMAGE_BASE_URL:
-        return ""
-    return f"{IMAGE_BASE_URL.rstrip('/')}/{Path(path).name}"
-
-
-class MemeEncoder:
+class ImageEncoder:
     def __init__(self) -> None:
         device = device_name()
         self.visual = SentenceTransformer(CLIP_MODEL_NAME, device=device)
@@ -78,10 +72,10 @@ class MemeEncoder:
         return self.visual.encode(image, normalize_embeddings=True).tolist()
 
     def encode_text(self, text: str) -> list[float]:
-        return self.text.encode(text or "meme", normalize_embeddings=True).tolist()
+        return self.text.encode(text or "screenshot", normalize_embeddings=True).tolist()
 
 
-def build_point(image_path: str, encoder: MemeEncoder, *, template: str = "", tags: Iterable[str] = (), metadata: dict[str, Any] | None = None, search_text: str = "", caption: str = "", media_type: str = "meme", captured_at: str | None = None) -> PointStruct:
+def build_point(image_path: str, encoder: ImageEncoder, *, template: str = "", tags: Iterable[str] = (), metadata: dict[str, Any] | None = None, search_text: str = "", caption: str = "", media_type: str = "photo", captured_at: str | None = None) -> PointStruct:
     from media_utils import open_image
 
     with open_image(image_path) as source:
@@ -99,7 +93,7 @@ def build_point(image_path: str, encoder: MemeEncoder, *, template: str = "", ta
     ) or Path(image_path).stem
     payload = {
         "local_path": str(image_path),
-        "image_url": public_image_url(image_path),
+        "image_url": "",  # legacy payload field; local files use local_path
         "media_type": media_type,
         "ocr_text": ocr_text,
         "normalized_text": normalize_text(ocr_text),
@@ -114,8 +108,8 @@ def build_point(image_path: str, encoder: MemeEncoder, *, template: str = "", ta
         "height": height,
         "content_hash": content_hash,
         "perceptual_hash": perceptual_hash,
-        # Screenshots pass their file mtime so results can show real dates;
-        # memes keep the ingestion timestamp.
+        # Screenshots/photos pass EXIF/mtime capture time; callers that don't
+        # supply one get the ingestion timestamp.
         "created_at": captured_at or datetime.now(timezone.utc).isoformat(),
     }
     payload.update(metadata)
@@ -127,19 +121,3 @@ def build_point(image_path: str, encoder: MemeEncoder, *, template: str = "", ta
         },
         payload=payload,
     )
-
-
-def ingest_paths(client: Any, collection_name: str, paths: Iterable[str], *, template: str = "", tags: Iterable[str] = (), batch_size: int = 16) -> dict[str, int]:
-    encoder = MemeEncoder()
-    points: list[PointStruct] = []
-    processed = failed = 0
-    for path in paths:
-        try:
-            points.append(build_point(path, encoder, template=template, tags=tags))
-            processed += 1
-        except Exception as exc:
-            failed += 1
-            print(f"Skipping {path}: {exc}")
-    for start in range(0, len(points), batch_size):
-        client.upsert(collection_name=collection_name, points=points[start : start + batch_size], wait=True)
-    return {"processed": processed, "failed": failed}

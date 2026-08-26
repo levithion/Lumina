@@ -55,8 +55,8 @@ def caption_prompt(media_type: str = "") -> str:
     return _CAPTION_PROMPTS.get((media_type or "").strip().lower(), _DEFAULT_PROMPT)
 
 
-class MemeCaptioner:
-    """Small VLM that turns meme images into searchable captions plus a safety flag."""
+class ImageCaptioner:
+    """Small VLM that turns images into searchable captions plus a safety flag."""
 
     def __init__(self, model_name: str = CAPTION_MODEL_NAME, device: str | None = None) -> None:
         if not CAPTION_ENABLED:
@@ -123,11 +123,11 @@ class DisabledCaptioner:
 
 
 def build_captioner(model_name: str = CAPTION_MODEL_NAME, device: str | None = None):
-    """Return a MemeCaptioner, or DisabledCaptioner when captioning is off."""
+    """Return an ImageCaptioner, or DisabledCaptioner when captioning is off."""
     if not CAPTION_ENABLED:
         return DisabledCaptioner()
     try:
-        return MemeCaptioner(model_name=model_name, device=device)
+        return ImageCaptioner(model_name=model_name, device=device)
     except Exception as exc:
         # Missing weights / no backend should never block ingestion entirely,
         # but the fallback must be loud — silent degradation is how empty

@@ -34,9 +34,9 @@ from config import (
     PHASH_NEAR_DUPLICATE_DISTANCE,
     qdrant_client,
 )
-from init_meme_db import initialize_meme_database
-from meme_pipeline import MemeEncoder, compute_phash
-from meme_retrieval import find_similar, hybrid_search, reverse_image_search
+from init_db import initialize_database
+from pipeline import ImageEncoder, compute_phash
+from retrieval import find_similar, hybrid_search, reverse_image_search
 from query_dates import parse_date_range
 
 PLACEHOLDER_HTML = """<!doctype html><html><head><title>Lumina</title></head>
@@ -78,10 +78,10 @@ def create_app(
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> Any:
         if state["client"] is None:
-            initialize_meme_database(state["collection"])
+            initialize_database(state["collection"])
             state["client"] = qdrant_client()
         if state["encoder"] is None:
-            state["encoder"] = MemeEncoder()
+            state["encoder"] = ImageEncoder()
             try:
                 from captioner import build_captioner
 

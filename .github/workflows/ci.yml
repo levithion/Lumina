@@ -14,8 +14,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      # Full install: the pipeline tests import meme_pipeline (torch chain).
+      # Full install: the pipeline tests import pipeline.py (torch chain).
       - name: Install dependencies
         run: pip install -r requirements.txt
       - name: Run tests
-        run: python -m pytest test_meme_search.py test_server.py -v
+        run: python -m pytest test_memory_search.py test_server.py -v

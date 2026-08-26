@@ -3,8 +3,8 @@ from types import SimpleNamespace
 from PIL import Image
 
 from ingest_screenshots import discover_images
-from meme_pipeline import build_point
-from meme_retrieval import (
+from pipeline import build_point
+from retrieval import (
     _text_score,
     build_search_filter,
     hybrid_search,
@@ -15,7 +15,7 @@ from meme_retrieval import (
 
 
 class StubEncoder:
-    """Stands in for MemeEncoder so tests never download model weights."""
+    """Stands in for ImageEncoder so tests never download model weights."""
 
     def encode_image(self, image):
         return [0.1] * 512
@@ -115,7 +115,7 @@ def test_hybrid_search_merges_and_labels_matches():
 
 
 def test_build_point_payload_and_deterministic_id(tmp_path):
-    image_path = tmp_path / "meme.png"
+    image_path = tmp_path / "shot.png"
     Image.new("RGB", (8, 8), color=(200, 10, 10)).save(image_path)
 
     first = build_point(str(image_path), StubEncoder(), template="Drake", tags=["Fun"], caption="a caption", metadata={"is_sensitive": True})
@@ -147,9 +147,9 @@ def test_build_point_screenshot_mode(tmp_path):
     assert point.payload["media_type"] == "screenshot"
     assert point.payload["created_at"] == "2026-08-25T09:00:00+00:00"
     assert point.payload["tags"] == ["screenshot"]
-    # Memes keep the default ingestion timestamp behavior.
+    # Callers that skip media_type get the neutral photo default.
     default_point = build_point(str(image_path), StubEncoder())
-    assert default_point.payload["media_type"] == "meme"
+    assert default_point.payload["media_type"] == "photo"
     assert default_point.payload["created_at"].endswith("+00:00")
 
 
@@ -471,7 +471,7 @@ def test_parse_date_range_no_phrase_returns_query_untouched():
 def test_search_filter_carries_datetime_range():
     from datetime import datetime, timezone
 
-    from meme_retrieval import build_search_filter
+    from retrieval import build_search_filter
 
     search_filter = build_search_filter(
         safe_only=False,
@@ -499,7 +499,7 @@ class SimilarStubClient:
 
 
 def test_find_similar_excludes_probe_and_keeps_order():
-    from meme_retrieval import find_similar
+    from retrieval import find_similar
 
     results = find_similar(SimilarStubClient(), "collection", "target", limit=5)
 
@@ -512,7 +512,7 @@ def test_find_similar_missing_point_returns_empty():
         def retrieve(self, **kwargs):
             return []
 
-    from meme_retrieval import find_similar
+    from retrieval import find_similar
 
     assert find_similar(EmptyClient(), "collection", "ghost") == []
 
@@ -535,7 +535,7 @@ def test_hybrid_search_weights_can_flip_ranking():
 
 
 def test_resolve_weights_defaults_to_memory_profile():
-    from meme_retrieval import resolve_weights
+    from retrieval import resolve_weights
 
     assert resolve_weights() == (0.10, 0.50, 0.40)
     assert resolve_weights("meme") == (0.20, 0.45, 0.35)

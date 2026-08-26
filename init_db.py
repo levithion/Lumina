@@ -1,11 +1,11 @@
 from qdrant_client.models import Distance, PayloadSchemaType, TextIndexParams, TokenizerType, VectorParams
 
-from config import MEME_COLLECTION_NAME, qdrant_client
+from config import MEMORY_COLLECTION_NAME, qdrant_client
 
 
-def initialize_meme_database(collection_name: str = "") -> None:
+def initialize_database(collection_name: str = "") -> None:
     client = qdrant_client()
-    name = collection_name or MEME_COLLECTION_NAME
+    name = collection_name or MEMORY_COLLECTION_NAME
     if not client.collection_exists(name):
         client.create_collection(
             collection_name=name,
@@ -39,8 +39,8 @@ def initialize_meme_database(collection_name: str = "") -> None:
         )
     except Exception:
         pass
-    print(f"Meme collection ready: {name}")
+    print(f"Collection ready: {name}")
 
 
 if __name__ == "__main__":
-    initialize_meme_database()
+    initialize_database()
