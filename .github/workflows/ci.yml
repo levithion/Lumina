@@ -8,14 +8,15 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      # Full install: the pipeline tests import pipeline.py (torch chain).
-      - name: Install dependencies
-        run: pip install -r requirements.txt
+      # Tests stub the model layer, so CI skips the multi-GB torch/transformers
+      # download entirely; runtime deps live in requirements.txt.
+      - name: Install test dependencies
+        run: pip install fastapi httpx "qdrant-client>=1.13" pillow pillow-heif ImageHash watchdog python-multipart pytest
       - name: Run tests
         run: python -m pytest test_memory_search.py test_server.py -v

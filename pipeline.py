@@ -9,15 +9,16 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
-import torch
 from PIL import Image
 from qdrant_client.models import PointStruct
-from sentence_transformers import SentenceTransformer
 
 from config import CLIP_MODEL_NAME, TEXT_MODEL_NAME
 
 
 def device_name() -> str:
+    # Imported lazily so test/CI environments can skip the torch download.
+    import torch
+
     return "cuda" if torch.cuda.is_available() else ("mps" if torch.backends.mps.is_available() else "cpu")
 
 
@@ -64,6 +65,8 @@ def deterministic_id(content_hash: str) -> str:
 
 class ImageEncoder:
     def __init__(self) -> None:
+        from sentence_transformers import SentenceTransformer
+
         device = device_name()
         self.visual = SentenceTransformer(CLIP_MODEL_NAME, device=device)
         self.text = SentenceTransformer(TEXT_MODEL_NAME, device=device)
