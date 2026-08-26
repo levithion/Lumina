@@ -50,6 +50,27 @@ display:grid;place-items:center;height:100vh;margin:0">
 UI_DIR = Path(__file__).resolve().parent / "ui"
 
 
+def ensure_storage_available() -> None:
+    """Fail fast with a human message when another instance owns the store."""
+    import sys
+
+    from qdrant_client import QdrantClient
+
+    from config import MEMORY_STORAGE_PATH
+
+    try:
+        QdrantClient(path=MEMORY_STORAGE_PATH, force_disable_check_same_thread=True).close()
+    except RuntimeError:
+        print(
+            f"Another Lumina instance is already using {MEMORY_STORAGE_PATH}.\n"
+            "  • Quit the other Lumina window/process and retry, or\n"
+            "  • find it with:  lsof qdrant_data/.lock\n"
+            "  • or run this instance elsewhere:  MEMORY_STORAGE_PATH=/path/to/data",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+
+
 class OpenRequest(BaseModel):
     path: str
 
@@ -319,6 +340,7 @@ def main() -> None:
     parser.add_argument("--watch", action="store_true", help="also watch the folder for changes")
     args = parser.parse_args()
 
+    ensure_storage_available()
     global app
     app = create_app(folder=Path(args.folder).expanduser().resolve(), watch=args.watch)
 

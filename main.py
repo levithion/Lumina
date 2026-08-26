@@ -20,7 +20,7 @@ from pathlib import Path
 import uvicorn
 
 from config import SCREENSHOT_ROOT, SERVER_HOST, SERVER_PORT
-from server import create_app
+from server import create_app, ensure_storage_available
 
 
 def wait_until_ready(port: int, timeout_seconds: float = 300) -> bool:
@@ -47,6 +47,7 @@ def main() -> None:
     parser.add_argument("--web", action="store_true", help="serve headlessly; skip the native window")
     args = parser.parse_args()
 
+    ensure_storage_available()
     app = create_app(
         folder=Path(args.folder).expanduser().resolve(),
         watch=not args.no_watch,
